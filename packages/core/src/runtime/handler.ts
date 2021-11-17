@@ -212,22 +212,22 @@ export const DotnetHandler: Handler = (opts: any) => {
   };
 };
 
-export function build(opts: Opts) {
+export async function build(opts: Opts) {
   const instructions = resolve(opts.runtime)(opts);
   if (!instructions.build) return;
-  const result = spawn.sync(
-    instructions.build.command,
-    instructions.build.args,
-    {
-      env: {
-        ...instructions.build.env,
-        ...process.env,
-      },
-      cwd: opts.srcPath,
-      stdio: "inherit",
-    }
-  );
-  if (result.error) throw result.error;
+  const proc = spawn(instructions.build.command, instructions.build.args, {
+    env: {
+      ...instructions.build.env,
+      ...process.env,
+    },
+    cwd: opts.srcPath,
+  });
+  return new Promise<void>((resolve, reject) => {
+    proc.on("exit", () => {
+      if (proc.exitCode === 0) resolve();
+      if (proc.exitCode !== 0) reject();
+    });
+  });
 }
 
 export function resolve(runtime: string): Handler {

@@ -102,10 +102,8 @@ const clientLogger = {
 };
 
 module.exports = async function (argv, config, cliInfo) {
-  const {
-    inputFiles: cdkInputFiles,
-    lintOutput: cdkLintOutput,
-  } = await prepareCdk(argv, cliInfo, config);
+  const { inputFiles: cdkInputFiles, lintOutput: cdkLintOutput } =
+    await prepareCdk(argv, cliInfo, config);
 
   // Deploy debug stack
   const debugStackOutputs = await deployDebugStack(argv, config, cliInfo);
@@ -326,11 +324,9 @@ async function deployApp(argv, config, cliInfo) {
 
   const watcher = new Runtime.Watcher();
   watcher.reload(paths.appPath);
-  watcher.onChange((funcs) => {
+  watcher.onChange(async (funcs) => {
     console.log("New: Rebuilding...");
-    for (let func of funcs) {
-      if (server) server.drain(func);
-    }
+    await Promise.all(funcs.map((f) => server.drain(f)));
     console.log("New: Done rebuilding.");
   });
 

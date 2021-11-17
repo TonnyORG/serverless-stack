@@ -223,7 +223,7 @@ export class Server {
     }
     pool.waiting = [];
     pool.processes = [];
-    Handler.build(opts);
+    await Handler.build(opts);
   }
 
   private static generateFunctionID(opts: Handler.Opts) {
