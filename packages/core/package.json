@@ -37,7 +37,6 @@
   },
   "gitHead": "5b79ddb145319bf1cf348f72d48e8371f3317e93",
   "devDependencies": {
-    "@tsconfig/node10": "^1.0.8",
     "@tsconfig/node14": "^1.0.1",
     "@types/express": "^4.17.13",
     "@types/node": "^14.0.27",
