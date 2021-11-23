@@ -2,12 +2,23 @@ import path from "path";
 import { Definition } from "./definition";
 import fs from "fs-extra";
 import { State } from "../../state";
-import spawn from "cross-spawn";
 import * as esbuild from "esbuild";
 
 const BUILD_CACHE: Record<string, esbuild.BuildResult> = {};
 
-export const NodeHandler: Definition = (opts) => {
+type Bundle = {
+  loader?: { [ext: string]: esbuild.Loader };
+  externalModules?: string[];
+  nodeModules?: string[];
+  esbuildConfig?: {
+    define?: { [key: string]: string };
+    keepNames?: boolean;
+    plugins?: string;
+  };
+  minify?: boolean;
+};
+
+export const NodeHandler: Definition<Bundle> = (opts) => {
   const dir = path.dirname(opts.handler);
   const ext = path.extname(opts.handler);
   const base = path.basename(opts.handler).split(".")[0];
@@ -22,37 +33,35 @@ export const NodeHandler: Definition = (opts) => {
     opts.root,
     path.join(path.dirname(file), base + ".js")
   );
+  const config: esbuild.BuildOptions = {
+    incremental: true,
+    define: opts.bundle.esbuildConfig?.define,
+    keepNames: opts.bundle.esbuildConfig?.keepNames,
+    entryPoints: [path.join(opts.srcPath, file)],
+    bundle: true,
+    external: [
+      "aws-sdk",
+      ...(opts.bundle.externalModules || []),
+      ...(opts.bundle.nodeModules || []),
+    ],
+    sourcemap: "external",
+    platform: "node",
+    target: "node14",
+    outfile: target,
+  };
 
   return {
     build: async () => {
-      const start = Date.now();
-      /*
-      spawn.sync(cmd.command, cmd.args, {
-        env: {
-          ...cmd.env,
-          ...process.env,
-        },
-        cwd: opts.srcPath,
-      });
-      */
       const existing = BUILD_CACHE[opts.id];
       if (existing?.rebuild) {
         await existing.rebuild();
-        console.log("rebuilding", file, "took", Date.now() - start, "ms");
         return;
       }
-      const result = await esbuild.build({
-        incremental: true,
-        entryPoints: [path.join(opts.srcPath, file)],
-        bundle: true,
-        external: ["pg", "deasync", "kysely", "aws-sdk"],
-        sourcemap: "external",
-        platform: "node",
-        target: "node14",
-        outfile: target,
-      });
+      const result = await esbuild.build(config);
       BUILD_CACHE[opts.id] = result;
-      console.log("building", file, "took", Date.now() - start);
+    },
+    bundle: () => {
+      esbuild.buildSync(config);
     },
     run: {
       command: "npx",

@@ -27,14 +27,16 @@ type InvokeOpts = {
   env: Record<string, string>;
 };
 
-type ResponseSuccess = {
+export type ResponseSuccess = {
   type: "success";
   data: any;
 };
-type ResponseTimeout = {
+
+export type ResponseTimeout = {
   type: "timeout";
 };
-type ResponseFailure = {
+
+export type ResponseFailure = {
   type: "failure";
   error: Error;
   rawError: any;

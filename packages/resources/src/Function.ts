@@ -276,6 +276,7 @@ export class Function extends lambda.Function {
           ...(debugOverrideProps || {}),
         });
       } else {
+        console.log("Deploying old stub");
         super(scope, id, {
           ...props,
           runtime: isNodeRuntime ? runtime : lambda.Runtime.NODEJS_12_X,
@@ -303,6 +304,7 @@ export class Function extends lambda.Function {
         handler: handler,
         runtime: runtime.toString(),
         srcPath: srcPath,
+        bundle: {},
       });
       this.addEnvironment("SST_FUNCTION_ID", this.node.addr);
       this.attachPermissions([

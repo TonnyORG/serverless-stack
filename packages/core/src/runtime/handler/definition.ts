@@ -6,6 +6,7 @@ export type Command = {
 
 export type Instructions = {
   build?: Command | (() => Promise<void>);
+  bundle?: Command | (() => void);
   run: Command;
   watcher: {
     include: string[];
@@ -13,12 +14,13 @@ export type Instructions = {
   };
 };
 
-export type Opts = {
+export type Opts<T = any> = {
   id: string;
   root: string;
   runtime: string;
   srcPath: string;
   handler: string;
+  bundle: T;
 };
 
-export type Definition = (opts: Opts) => Instructions;
+export type Definition<T = any> = (opts: Opts<T>) => Instructions;
