@@ -102,8 +102,10 @@ const clientLogger = {
 };
 
 module.exports = async function (argv, config, cliInfo) {
-  const { inputFiles: cdkInputFiles, lintOutput: cdkLintOutput } =
-    await prepareCdk(argv, cliInfo, config);
+  const {
+    inputFiles: cdkInputFiles,
+    lintOutput: cdkLintOutput,
+  } = await prepareCdk(argv, cliInfo, config);
 
   // Deploy debug stack
   const debugStackOutputs = await deployDebugStack(argv, config, cliInfo);
@@ -333,6 +335,13 @@ async function deployApp(argv, config, cliInfo) {
   bridge.onRequest(async (req) => {
     const timeoutAt = Date.now() + req.debugRequestTimeoutInMs;
     const func = funcs.find((f) => f.id === req.functionId);
+    if (!func) {
+      console.error("Unable to find function", req.functionId);
+      return {
+        type: "failure",
+        body: "Failed to find function",
+      };
+    }
 
     clientLogger.debug("Invoking local function...");
     const result = await server.invoke({

@@ -7,7 +7,7 @@ import { v4 } from "uuid";
 
 const logger = getChildLogger("client");
 
-import * as Handler from "./handler";
+import { Handler } from "./handler";
 
 const API_VERSION = "2018-06-01";
 
@@ -223,7 +223,7 @@ export class Server {
     }
     pool.waiting = [];
     pool.processes = [];
-    await Handler.build(opts);
+    if (this.built[fun]) await Handler.build(opts);
   }
 
   private static generateFunctionID(opts: Handler.Opts) {

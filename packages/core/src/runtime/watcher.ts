@@ -1,6 +1,6 @@
 import { State } from "../state";
 import chokidar from "chokidar";
-import * as Handler from "./handler";
+import { Handler } from "./handler";
 import pm from "picomatch";
 
 export class Watcher {
