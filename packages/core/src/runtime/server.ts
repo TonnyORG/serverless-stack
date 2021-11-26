@@ -280,6 +280,7 @@ export class Server {
         requestId: this.lastRequest[id],
       })
     );
+    proc.on("exit", console.log);
     pool.processes.push(proc);
   }
 }
