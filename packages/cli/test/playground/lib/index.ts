@@ -18,6 +18,7 @@ import { MainStack as ApiV1Stack } from "./apiv1-stack";
 import { MainStack as ReactSiteStack } from "./react-static-site-stack";
 import { MainStack as NextjsStack } from "./nextjs-site-stack";
 //import { MainStack as ScriptStack } from "./script-stack";
+import { MainStack as EmptyStack } from "./empty-stack";
 //import { MainStack as ErrorStack } from "./error-stack";
 import * as sst from "@serverless-stack/resources";
 
@@ -37,6 +38,7 @@ export default async function main(app: sst.App) {
   new NextjsStack(app, "nextjs", { api: apiStack.api });
   //new ScriptStack(app, "script", { api: apiStack.api });
 
+  new EmptyStack(app, "empty");
   //new ErrorStack(app, "error");
 }
 
