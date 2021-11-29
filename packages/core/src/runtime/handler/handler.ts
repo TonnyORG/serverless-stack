@@ -1,4 +1,3 @@
-import spawn from "cross-spawn";
 import { Definition, Opts } from "./definition";
 
 import { NodeHandler } from "./node";
@@ -11,22 +10,13 @@ export { Opts, Instructions } from "./definition";
 export async function build(opts: Opts) {
   const instructions = resolve(opts.runtime)(opts);
   if (!instructions.build) return;
-  if (instructions.build instanceof Function) {
-    return instructions.build();
-  }
-  const proc = spawn(instructions.build.command, instructions.build.args, {
-    env: {
-      ...instructions.build.env,
-      ...process.env,
-    },
-    cwd: opts.srcPath,
-  });
-  return new Promise<void>((resolve, reject) => {
-    proc.on("exit", () => {
-      if (proc.exitCode === 0) resolve();
-      if (proc.exitCode !== 0) reject();
-    });
-  });
+  return instructions.build();
+}
+
+export function bundle(opts: Opts) {
+  const ins = instructions(opts);
+  if (!ins.bundle) return;
+  return ins.bundle();
 }
 
 export function resolve(runtime: string): Definition {

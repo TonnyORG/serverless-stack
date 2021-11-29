@@ -223,7 +223,6 @@ module.exports = async function (argv, config, cliInfo) {
   bridge.onRequest(handleRequest);
   ws.onRequest(handleRequest);
 
-  // Start code watcher, Lambda runtime server, and GraphQL server
   if (argv.console) {
     isConsoleEnabled = true;
     await startApiServer();

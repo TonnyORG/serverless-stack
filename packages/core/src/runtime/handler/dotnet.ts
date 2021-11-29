@@ -4,38 +4,42 @@ import { Paths } from "../../util";
 import { Definition } from "./definition";
 
 export const DotnetHandler: Definition = (opts: any) => {
-  const dir = State.Function.artifactsPath(opts.root, opts.srcPath);
+  const dir = State.Function.artifactsPath(
+    opts.root,
+    path.join(opts.id, opts.srcPath)
+  );
   const target = path.join(
     dir,
     path.basename(opts.handler).split(":")[0] + ".dll"
   );
   return {
-    build: {
-      command: "dotnet",
-      args: [
-        "publish",
-        "--output",
-        dir,
-        "--configuration",
-        "Release",
-        "--framework",
-        "netcoreapp3.1",
-        "/p:GenerateRuntimeConfigurationFiles=true",
-        "/clp:ForceConsoleColor",
-        // warnings are not reported for repeated builds by default and this flag
-        // does a clean before build. It takes a little longer to run, but the
-        // warnings are consistently printed on each build.
-        //"/target:Rebuild",
-        "--self-contained",
-        "false",
-        // do not print "Build Engine version"
-        "-nologo",
-        // only print errors
-        "--verbosity",
-        process.env.DEBUG ? "minimal" : "quiet",
-      ],
-      env: {},
-    },
+    build: () =>
+      buildSync(opts, {
+        command: "dotnet",
+        args: [
+          "publish",
+          "--output",
+          dir,
+          "--configuration",
+          "Release",
+          "--framework",
+          "netcoreapp3.1",
+          "/p:GenerateRuntimeConfigurationFiles=true",
+          "/clp:ForceConsoleColor",
+          // warnings are not reported for repeated builds by default and this flag
+          // does a clean before build. It takes a little longer to run, but the
+          // warnings are consistently printed on each build.
+          //"/target:Rebuild",
+          "--self-contained",
+          "false",
+          // do not print "Build Engine version"
+          "-nologo",
+          // only print errors
+          "--verbosity",
+          process.env.DEBUG ? "minimal" : "quiet",
+        ],
+        env: {},
+      }),
     run: {
       command: "dotnet",
       args: [

@@ -18,7 +18,7 @@ export const PythonHandler: Definition = (opts) => {
   })();
   const dir = path.dirname(opts.handler);
   const [base, ext] = path.basename(opts.handler).split(".");
-  const target = path.join(opts.srcPath, dir, base);
+  const target = path.join(opts.srcPath, opts.id, dir, base);
 
   return {
     run: {
