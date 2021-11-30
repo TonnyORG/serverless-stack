@@ -1698,6 +1698,7 @@ export * from "./packager";
 export * from "./state";
 export * from "./runtime";
 export * from "./bridge";
+export * from "./stacks";
 
 export const logger = rootLogger;
 export {

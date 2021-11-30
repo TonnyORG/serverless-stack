@@ -38,12 +38,16 @@ export const NodeHandler: Definition<Bundle> = (opts) => {
   const bundle = opts.bundle || {
     minify: true,
   };
+  const plugins = bundle.esbuildConfig?.plugins
+    ? require(bundle.esbuildConfig.plugins)
+    : undefined;
   const config: esbuild.BuildOptions = {
     loader: bundle.loader,
     minify: bundle.minify,
     define: bundle.esbuildConfig?.define,
     keepNames: bundle.esbuildConfig?.keepNames,
     entryPoints: [path.join(opts.srcPath, file)],
+    plugins,
     bundle: true,
     external: [
       "aws-sdk",

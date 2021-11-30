@@ -21,6 +21,12 @@ export const PythonHandler: Definition = (opts) => {
   const target = path.join(opts.srcPath, opts.id, dir, base);
 
   return {
+    bundle: () => {
+      return {
+        handler: opts.handler,
+        directory: opts.srcPath,
+      };
+    },
     run: {
       command:
         os.platform() === "win32" ? "python.exe" : opts.runtime.split(".")[0],

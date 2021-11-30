@@ -6,6 +6,10 @@ import { Runtime } from "../runtime";
 const FILE_NAME = "functions.jsonl";
 
 export function reset(root: string) {
+  fs.rmSync(artifactsPath(root, ""), {
+    recursive: true,
+    force: true,
+  });
   fs.rmSync(definitionsPath(root), {
     force: true,
   });

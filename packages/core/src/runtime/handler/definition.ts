@@ -13,7 +13,7 @@ type BundleResult = {
 
 export type Instructions = {
   build?: () => Promise<void>;
-  bundle?: () => BundleResult;
+  bundle: () => BundleResult;
   run: Command;
   watcher: {
     include: string[];

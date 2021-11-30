@@ -38,8 +38,11 @@ export type ResponseTimeout = {
 
 export type ResponseFailure = {
   type: "failure";
-  error: Error;
-  rawError: any;
+  error: {
+    errorType: string;
+    errorMessage: string;
+    stackTrace: string[];
+  };
 };
 
 type Response = ResponseSuccess | ResponseFailure | ResponseTimeout;
@@ -164,12 +167,11 @@ export class Server {
         );
         this.response(req.params.fun, req.params.awsRequestId, {
           type: "failure",
-          error: serializeError({
-            name: req.body.errorType,
-            message: req.body.errorMessage,
-            stack: req.body.trace,
-          }),
-          rawError: req.body,
+          error: {
+            errorType: req.body.errorType,
+            errorMessage: req.body.errorMessage,
+            stackTrace: req.body.trace,
+          },
         });
         res.status(202).send();
       }
@@ -209,11 +211,7 @@ export class Server {
 
   public async invoke(opts: InvokeOpts) {
     const fun = Server.generateFunctionID(opts.function);
-    const pool = this.pool(fun);
-    return new Promise<Response>((resolve) => {
-      pool.requests[opts.payload.context.awsRequestId] = resolve;
-      this.trigger(fun, opts);
-    });
+    return this.trigger(fun, opts);
   }
 
   public async drain(opts: Handler.Opts) {
@@ -241,55 +239,72 @@ export class Server {
   }
 
   private built: Record<string, true> = {};
-  private async trigger(fun: string, opts: InvokeOpts) {
+  private async trigger(fun: string, opts: InvokeOpts): Promise<Response> {
     logger.debug("Triggering", opts);
     const pool = this.pool(fun);
 
     // Check if built once before
     if (!this.built[opts.function.id]) {
-      Handler.build(opts.function);
-      this.built[opts.function.id] = true;
+      try {
+        await Handler.build(opts.function);
+        this.built[opts.function.id] = true;
+      } catch {
+        return {
+          type: "failure",
+          error: {
+            errorType: "build_failure",
+            errorMessage: "The function failed to build",
+            stackTrace: [],
+          },
+        };
+      }
     }
 
-    const [key] = Object.keys(pool.waiting);
-    if (key) {
-      const w = pool.waiting[key];
-      delete pool.waiting[key];
-      return w(opts.payload);
-    }
+    return new Promise<Response>((resolve) => {
+      pool.requests[opts.payload.context.awsRequestId] = resolve;
+      const [key] = Object.keys(pool.waiting);
+      if (key) {
+        const w = pool.waiting[key];
+        delete pool.waiting[key];
+        w(opts.payload);
+        return;
+      }
 
-    // Spawn new worker if one not immediately available
-    pool.pending.push(opts.payload);
-    const id = v4();
-    const instructions = Handler.resolve(opts.function.runtime)(opts.function);
-    const api = `127.0.0.1:${this.opts.port}/${id}/${opts.function.id}`;
-    const env = {
-      ...opts.env,
-      ...instructions.run.env,
-      AWS_LAMBDA_RUNTIME_API: api,
-      IS_LOCAL: "true",
-    };
-    logger.debug("Spawning", instructions);
-    const proc = spawn(instructions.run.command, instructions.run.args, {
-      env,
+      // Spawn new worker if one not immediately available
+      pool.pending.push(opts.payload);
+      const id = v4();
+      const instructions = Handler.resolve(opts.function.runtime)(
+        opts.function
+      );
+      const api = `127.0.0.1:${this.opts.port}/${id}/${opts.function.id}`;
+      const env = {
+        ...opts.env,
+        ...instructions.run.env,
+        AWS_LAMBDA_RUNTIME_API: api,
+        IS_LOCAL: "true",
+      };
+      logger.debug("Spawning", instructions);
+      const proc = spawn(instructions.run.command, instructions.run.args, {
+        env,
+      });
+      proc.stdout!.on("data", (data) =>
+        this.onStdOut.trigger({
+          data: data.toString(),
+          requestId: this.lastRequest[id],
+        })
+      );
+      proc.stderr!.on("data", (data) =>
+        this.onStdErr.trigger({
+          data: data.toString(),
+          requestId: this.lastRequest[id],
+        })
+      );
+      proc.on("exit", () => {
+        pool.processes = pool.processes.filter((p) => p !== proc);
+        delete pool.waiting[id];
+      });
+      pool.processes.push(proc);
     });
-    proc.stdout!.on("data", (data) =>
-      this.onStdOut.trigger({
-        data: data.toString(),
-        requestId: this.lastRequest[id],
-      })
-    );
-    proc.stderr!.on("data", (data) =>
-      this.onStdErr.trigger({
-        data: data.toString(),
-        requestId: this.lastRequest[id],
-      })
-    );
-    proc.on("exit", () => {
-      pool.processes = pool.processes.filter((p) => p !== proc);
-      delete pool.waiting[id];
-    });
-    pool.processes.push(proc);
   }
 }
 

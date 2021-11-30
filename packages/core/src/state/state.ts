@@ -9,6 +9,10 @@ export function resolve(root: string, relative: string) {
   return path.resolve(root, ".sst", relative);
 }
 
+export function stacksPath(root: string) {
+  return path.join(root, ".build", "lib");
+}
+
 export function init(root: string) {
   const dir = directory(root);
   if (fs.existsSync(dir)) return;

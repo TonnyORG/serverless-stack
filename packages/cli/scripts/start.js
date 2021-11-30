@@ -11,6 +11,7 @@ const {
   getChildLogger,
   STACK_DEPLOY_STATUS,
   Runtime,
+  Stacks,
   Bridge,
   State,
 } = require("@serverless-stack/core");
@@ -146,11 +147,36 @@ module.exports = async function (argv, config, cliInfo) {
 
   // Wire up watcher
   const watcher = new Runtime.Watcher();
-  watcher.reload(paths.appPath);
+  watcher.reload(paths.appPath, config);
   watcher.onChange(async (funcs) => {
-    console.log("New: Rebuilding...");
-    await Promise.all(funcs.map((f) => server.drain(f)));
-    console.log("New: Done rebuilding.");
+    if (!funcs.length) return;
+    clientLogger.info(chalk.gray("New: Rebuilding..."));
+    await Promise.all(funcs.map((f) => server.drain(f).catch(() => {})));
+    clientLogger.info(chalk.gray("New: Done rebuilding."));
+  });
+
+  // This is terrible and needs to be moved to typescript with a proper state machine/reactivity library
+  /** @type {"idle" | "building" | "dirty" | "deploying"} */
+  let CDK_STATE = "idle";
+
+  const cdkWatcher = new Stacks.Watcher(config.main);
+  cdkWatcher.onChange.add(async () => {
+    if (CDK_STATE !== "idle") return;
+    CDK_STATE = "building";
+    await Stacks.build(paths.appPath, config);
+    CDK_STATE = "deploying";
+    await deployApp(
+      argv,
+      {
+        ...config,
+        debugEndpoint,
+        debugBucketArn,
+        debugBucketName,
+      },
+      cliInfo
+    );
+    watcher.reload(paths.appPath, config);
+    CDK_STATE = "idle";
   });
 
   // Handle requests from udp or ws
@@ -246,10 +272,11 @@ async function deployDebugStack(config, cliInfo) {
   logger.info("");
 
   const stackName = `${config.stage}-${config.name}-debug-stack`;
-  const appBuildLibPath = path.join(paths.appBuildPath, "lib");
   const cdkOptions = {
     ...cliInfo.cdkOptions,
-    app: `node bin/index.js ${stackName} ${config.stage} ${config.region} ${paths.appPath} ${appBuildLibPath}`,
+    app: `node bin/index.js ${stackName} ${config.stage} ${config.region} ${
+      paths.appPath
+    } ${State.stacksPath(paths.appPath)}`,
     output: "cdk.out",
   };
 
@@ -285,7 +312,7 @@ async function deployDebugStack(config, cliInfo) {
 
   return deployRet[0].outputs;
 }
-// This is a bad pattern but needs a larger refactor to avoid
+
 async function deployApp(argv, config, cliInfo) {
   logger.info("");
   logger.info("===============");

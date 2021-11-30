@@ -208,9 +208,7 @@ export class Function extends lambda.Function {
 
     // Validate input
     const isNodeRuntime = runtimeStr.startsWith("nodejs");
-    const isGoRuntime = runtimeStr.startsWith("go");
     const isPythonRuntime = runtimeStr.startsWith("python");
-    const isDotnetRuntime = runtimeStr.startsWith("dotnetcore");
     if (isNodeRuntime) {
       bundle = bundle === undefined ? true : props.bundle;
       if (!bundle && srcPath === ".") {
@@ -227,8 +225,7 @@ export class Function extends lambda.Function {
       }
     }
 
-    const logicalId = scope.node.id + id;
-    console.log(logicalId);
+    const logicalId = [scope.node.id, id].join("-");
 
     // Handle local development (ie. sst start)
     // - set runtime to nodejs12.x for non-Node runtimes (b/c the stub is in Node)
@@ -306,7 +303,7 @@ export class Function extends lambda.Function {
         srcPath: srcPath,
         bundle: props.bundle,
       });
-      this.addEnvironment("SST_FUNCTION_ID", this.node.addr);
+      this.addEnvironment("SST_FUNCTION_ID", logicalId);
       this.attachPermissions([
         new iam.PolicyStatement({
           actions: ["s3:*"],

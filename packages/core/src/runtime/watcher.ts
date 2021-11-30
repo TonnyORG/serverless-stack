@@ -1,6 +1,8 @@
 import { State } from "../state";
 import chokidar from "chokidar";
 import { Handler } from "./handler";
+import { Config } from "../config";
+import path from "path";
 import pm from "picomatch";
 
 export class Watcher {
@@ -10,7 +12,9 @@ export class Watcher {
     this.handleChange = input;
   }
 
-  public reload(root: string) {
+  private chokidar?: chokidar.FSWatcher;
+
+  public reload(root: string, config: Config) {
     const funcs = State.Function.read(root);
     const instructions = funcs.map(
       (f) => [f, Handler.instructions(f)] as const
@@ -19,24 +23,29 @@ export class Watcher {
     const matchers = instructions.map(
       ([f, i]) => [f, i.watcher.include.map((p) => pm(p))] as const
     );
+    if (this.chokidar) this.chokidar.close();
+    const ignored = [
+      path.resolve(path.join(root, path.dirname(config.main), "**")),
+      "**/.build/**",
+      "**/.sst/**",
+    ];
 
-    chokidar
-      .watch(paths, {
-        persistent: true,
-        ignoreInitial: true,
-        followSymlinks: false,
-        disableGlobbing: false,
-        ignored: ["**/.build/**", "**/.sst/**"],
-        awaitWriteFinish: {
-          pollInterval: 100,
-          stabilityThreshold: 20,
-        },
-      })
-      .on("change", (file) => {
-        const funcs = matchers
-          .filter(([_, matchers]) => matchers.some((m) => m(file)))
-          .map(([f]) => f);
-        this.handleChange?.(funcs);
-      });
+    this.chokidar = chokidar.watch(paths, {
+      persistent: true,
+      ignoreInitial: true,
+      followSymlinks: false,
+      disableGlobbing: false,
+      ignored,
+      awaitWriteFinish: {
+        pollInterval: 100,
+        stabilityThreshold: 20,
+      },
+    });
+    this.chokidar.on("change", (file) => {
+      const funcs = matchers
+        .filter(([_, matchers]) => matchers.some((m) => m(file)))
+        .map(([f]) => f);
+      this.handleChange?.(funcs);
+    });
   }
 }

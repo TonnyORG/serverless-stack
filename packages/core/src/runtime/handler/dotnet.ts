@@ -1,7 +1,7 @@
 import path from "path";
 import { State } from "../../state";
 import { Paths } from "../../util";
-import { Definition } from "./definition";
+import { buildSync, Command, Definition } from "./definition";
 
 export const DotnetHandler: Definition = (opts: any) => {
   const dir = State.Function.artifactsPath(
@@ -12,34 +12,41 @@ export const DotnetHandler: Definition = (opts: any) => {
     dir,
     path.basename(opts.handler).split(":")[0] + ".dll"
   );
+  const cmd: Command = {
+    command: "dotnet",
+    args: [
+      "publish",
+      "--output",
+      dir,
+      "--configuration",
+      "Release",
+      "--framework",
+      "netcoreapp3.1",
+      "/p:GenerateRuntimeConfigurationFiles=true",
+      "/clp:ForceConsoleColor",
+      // warnings are not reported for repeated builds by default and this flag
+      // does a clean before build. It takes a little longer to run, but the
+      // warnings are consistently printed on each build.
+      //"/target:Rebuild",
+      "--self-contained",
+      "false",
+      // do not print "Build Engine version"
+      "-nologo",
+      // only print errors
+      "--verbosity",
+      process.env.DEBUG ? "minimal" : "quiet",
+    ],
+    env: {},
+  };
   return {
-    build: () =>
-      buildSync(opts, {
-        command: "dotnet",
-        args: [
-          "publish",
-          "--output",
-          dir,
-          "--configuration",
-          "Release",
-          "--framework",
-          "netcoreapp3.1",
-          "/p:GenerateRuntimeConfigurationFiles=true",
-          "/clp:ForceConsoleColor",
-          // warnings are not reported for repeated builds by default and this flag
-          // does a clean before build. It takes a little longer to run, but the
-          // warnings are consistently printed on each build.
-          //"/target:Rebuild",
-          "--self-contained",
-          "false",
-          // do not print "Build Engine version"
-          "-nologo",
-          // only print errors
-          "--verbosity",
-          process.env.DEBUG ? "minimal" : "quiet",
-        ],
-        env: {},
-      }),
+    build: async () => buildSync(opts, cmd),
+    bundle: () => {
+      buildSync(opts, cmd);
+      return {
+        handler: opts.handler,
+        directory: dir,
+      };
+    },
     run: {
       command: "dotnet",
       args: [
